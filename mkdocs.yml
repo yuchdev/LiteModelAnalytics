@@ -1,0 +1,32 @@
+site_name: Model Analytics
+site_description: Request-aware LLM model analytics, comparison, and selection
+site_url: https://yuchdev.github.io/LiteModelAnalytics
+repo_url: https://github.com/yuchdev/LiteModelAnalytics
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Testing: testing.md
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - admonition
+  - toc:
+      permalink: true
