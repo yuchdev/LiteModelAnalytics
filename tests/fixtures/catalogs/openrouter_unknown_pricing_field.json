@@ -1,0 +1,11 @@
+{
+  "data": [
+    {
+      "id": "future/provider-model",
+      "pricing": {
+        "prompt": "0.1",
+        "quantum_compute": "42.42"
+      }
+    }
+  ]
+}

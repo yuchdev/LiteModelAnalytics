@@ -22,6 +22,11 @@ plugins:
 nav:
   - Home: index.md
   - Architecture: architecture.md
+  - Concepts:
+      - Models: concepts/models.md
+      - Pricing: concepts/pricing.md
+  - Guides:
+      - Catalogs: guides/catalogs.md
   - Testing: testing.md
 
 markdown_extensions:

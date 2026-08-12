@@ -1,0 +1,15 @@
+{
+  "data": [
+    {
+      "id": "openai/gpt-4o-mini",
+      "name": "GPT-4o Mini",
+      "context_length": 128000,
+      "max_output_tokens": 16384,
+      "supported_parameters": ["temperature", "max_tokens"],
+      "pricing": {
+        "prompt": "0.00000015",
+        "completion": "0.00000060"
+      }
+    }
+  ]
+}

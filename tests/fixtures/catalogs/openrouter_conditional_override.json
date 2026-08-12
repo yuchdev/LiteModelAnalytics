@@ -1,0 +1,28 @@
+{
+  "data": [
+    {
+      "id": "openai/gpt-4.1",
+      "pricing": {
+        "prompt": "0.000010",
+        "completion": "0.000030"
+      },
+      "pricing_overrides": [
+        {
+          "name": "high-volume",
+          "prompt_tokens_gte": 100000,
+          "prices": {
+            "prompt": "0.000008"
+          }
+        },
+        {
+          "name": "night-window",
+          "utc_window_start": "22:00:00",
+          "utc_window_end": "02:00:00",
+          "prices": {
+            "completion": "0.000025"
+          }
+        }
+      ]
+    }
+  ]
+}
