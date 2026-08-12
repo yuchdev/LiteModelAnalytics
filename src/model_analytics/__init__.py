@@ -19,6 +19,6 @@ __all__ = [
     "ConfigurationError",
     "DependencyError",
     "ModelAnalyticsError",
-    "analytics",
     "__version__",
+    "analytics",
 ]

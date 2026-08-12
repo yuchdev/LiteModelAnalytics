@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import types
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -27,9 +26,13 @@ async def test_refresh_cache_offline_list_models(tmp_path: Path) -> None:
     )
 
     openrouter = OpenRouterCatalogAdapter(cache_dir=tmp_path, ttl=timedelta(minutes=5))
-    service = CatalogService(openrouter_provider=openrouter, litellm_provider=LiteLLMCatalogAdapter())
+    service = CatalogService(
+        openrouter_provider=openrouter, litellm_provider=LiteLLMCatalogAdapter()
+    )
 
-    await service.refresh_async(force=True, include_litellm=False, now_utc=datetime(2026, 1, 1, tzinfo=UTC))
+    await service.refresh_async(
+        force=True, include_litellm=False, now_utc=datetime(2026, 1, 1, tzinfo=UTC)
+    )
     offline_snapshot = await service.refresh_async(offline=True, include_litellm=False)
 
     assert offline_snapshot.models
@@ -39,7 +42,9 @@ async def test_refresh_cache_offline_list_models(tmp_path: Path) -> None:
 @pytest.mark.integration
 @pytest.mark.asyncio
 @respx.mock
-async def test_openrouter_and_litellm_merge(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+async def test_openrouter_and_litellm_merge(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     respx.get("https://openrouter.ai/api/v1/models").mock(
         return_value=httpx.Response(
             200,

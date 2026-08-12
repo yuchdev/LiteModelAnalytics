@@ -27,7 +27,7 @@ def merge_catalog_snapshots(
     """Merge two snapshots where primary wins on conflicts unless unknown."""
     clock = now_utc or datetime.now(UTC)
     merged_models: dict[str, ModelProfile] = {}
-    conflicts: dict[str, dict[str, dict[str, str]]] = {}
+    conflicts: dict[str, Any] = {}
 
     model_ids = sorted(set(primary.models.keys()) | set(secondary.models.keys()))
     for model_id in model_ids:
@@ -42,8 +42,8 @@ def merge_catalog_snapshots(
             merged_models[model_id] = primary_profile
             continue
 
-        assert primary_profile is not None
-        assert secondary_profile is not None
+        if primary_profile is None or secondary_profile is None:
+            raise ValueError("invariant violation while merging model profiles")
         merged, model_conflicts = _merge_profiles(primary_profile, secondary_profile)
         if model_conflicts:
             conflicts[model_id] = model_conflicts
@@ -62,11 +62,13 @@ def merge_catalog_snapshots(
 def _merge_profiles(
     primary: ModelProfile,
     secondary: ModelProfile,
-) -> tuple[ModelProfile, dict[str, dict[str, str]]]:
+) -> tuple[ModelProfile, dict[str, Any]]:
     if primary.identity.canonical_id != secondary.identity.canonical_id:
         raise ValueError("cannot merge mismatched model identities")
 
-    capability, capability_conflicts = _merge_capabilities(primary.capabilities, secondary.capabilities)
+    capability, capability_conflicts = _merge_capabilities(
+        primary.capabilities, secondary.capabilities
+    )
     pricing, pricing_conflicts = _merge_pricing(primary, secondary)
 
     sources = _dedupe_sources((*primary.sources, *secondary.sources))
@@ -80,7 +82,7 @@ def _merge_profiles(
     for field, values in pricing_conflicts.items():
         provenance.setdefault(f"pricing.{field}", {}).update(values)
 
-    conflicts: dict[str, dict[str, str]] = {}
+    conflicts: dict[str, Any] = {}
     if capability_conflicts:
         conflicts["capabilities"] = capability_conflicts
     if pricing_conflicts:
@@ -106,13 +108,27 @@ def _merge_capabilities(
     payload = primary.model_dump()
     conflicts: dict[str, dict[str, str]] = {}
 
-    for field_name in ("tools", "structured_output", "json_mode", "reasoning", "streaming", "embeddings", "image", "audio", "video"):
+    for field_name in (
+        "tools",
+        "structured_output",
+        "json_mode",
+        "reasoning",
+        "streaming",
+        "embeddings",
+        "image",
+        "audio",
+        "video",
+    ):
         p_value = getattr(primary, field_name)
         s_value = getattr(secondary, field_name)
 
         if p_value == SupportStatus.UNKNOWN and s_value != SupportStatus.UNKNOWN:
             payload[field_name] = s_value
-        elif p_value != SupportStatus.UNKNOWN and s_value != SupportStatus.UNKNOWN and p_value != s_value:
+        elif (
+            p_value != SupportStatus.UNKNOWN
+            and s_value != SupportStatus.UNKNOWN
+            and p_value != s_value
+        ):
             conflicts[field_name] = {"primary": p_value.value, "secondary": s_value.value}
 
     for field_name in ("context_length", "max_output_tokens"):
@@ -159,13 +175,17 @@ def _merge_pricing(
         pri_value = components.get(key)
         if pri_value is None:
             components[key] = sec_value
-            source_by_key.setdefault(key, secondary_profile.sources[0].name if secondary_profile.sources else "secondary")
+            source_by_key.setdefault(
+                key, secondary_profile.sources[0].name if secondary_profile.sources else "secondary"
+            )
             continue
 
         if pri_value.amount != sec_value.amount:
             if not primary_authoritative:
                 components[key] = sec_value
-                source_by_key[key] = secondary_profile.sources[0].name if secondary_profile.sources else "secondary"
+                source_by_key[key] = (
+                    secondary_profile.sources[0].name if secondary_profile.sources else "secondary"
+                )
             disagreements[key] = {
                 "primary": str(pri_value.amount),
                 "secondary": str(sec_value.amount),
@@ -197,6 +217,8 @@ def _dedupe_sources(sources: tuple[Any, ...]) -> tuple[Any, ...]:
     return tuple(result)
 
 
-def choose_price_value(primary: PriceComponent, secondary: PriceComponent, prefer_primary: bool) -> Decimal:
+def choose_price_value(
+    primary: PriceComponent, secondary: PriceComponent, prefer_primary: bool
+) -> Decimal:
     """Small helper retained for explicit unit tests around deterministic choice."""
     return primary.amount if prefer_primary else secondary.amount

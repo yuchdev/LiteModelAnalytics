@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 
-from model_analytics.domain import CatalogSnapshot, ModelProfile
+from model_analytics.domain import CatalogSnapshot, CatalogSource, ModelProfile
 
 from .litellm import LiteLLMCatalogAdapter
 from .merge import merge_catalog_snapshots
@@ -49,7 +49,9 @@ class CatalogService:
                 offline=offline,
                 now_utc=clock,
             )
-            merge_result = merge_catalog_snapshots(openrouter_snapshot, litellm_snapshot, now_utc=clock)
+            merge_result = merge_catalog_snapshots(
+                openrouter_snapshot, litellm_snapshot, now_utc=clock
+            )
             self._snapshot = merge_result.snapshot
         else:
             self._snapshot = openrouter_snapshot
@@ -65,6 +67,16 @@ class CatalogService:
         now_utc: datetime | None = None,
     ) -> CatalogSnapshot:
         """Synchronous catalog refresh facade for application/CLI use."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            pass
+        else:
+            raise RuntimeError(
+                "CatalogService.refresh() cannot be called from a running event loop; "
+                "use refresh_async() instead."
+            )
+
         return asyncio.run(
             self.refresh_async(
                 force=force,
@@ -93,7 +105,7 @@ class CatalogService:
 
         return None
 
-    def sources(self):
+    def sources(self) -> tuple[CatalogSource, ...]:
         """List snapshot source entries."""
         snapshot = self._require_snapshot()
         return snapshot.sources

@@ -52,7 +52,9 @@ async def test_openrouter_timeout_error(tmp_path: Path) -> None:
 @respx.mock
 @pytest.mark.parametrize("status_code", [401, 403, 429, 500])
 async def test_openrouter_http_errors(tmp_path: Path, status_code: int) -> None:
-    respx.get("https://openrouter.ai/api/v1/models").mock(return_value=httpx.Response(status_code, json={}))
+    respx.get("https://openrouter.ai/api/v1/models").mock(
+        return_value=httpx.Response(status_code, json={})
+    )
 
     adapter = OpenRouterCatalogAdapter(cache_dir=tmp_path)
     with pytest.raises(CatalogFetchError):
@@ -63,7 +65,9 @@ async def test_openrouter_http_errors(tmp_path: Path, status_code: int) -> None:
 @pytest.mark.asyncio
 @respx.mock
 async def test_openrouter_malformed_json(tmp_path: Path) -> None:
-    respx.get("https://openrouter.ai/api/v1/models").mock(return_value=httpx.Response(200, text="not-json"))
+    respx.get("https://openrouter.ai/api/v1/models").mock(
+        return_value=httpx.Response(200, text="not-json")
+    )
 
     adapter = OpenRouterCatalogAdapter(cache_dir=tmp_path)
     with pytest.raises(CatalogParseError):
@@ -74,7 +78,9 @@ async def test_openrouter_malformed_json(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 @respx.mock
 async def test_openrouter_top_level_malformed_schema(tmp_path: Path) -> None:
-    respx.get("https://openrouter.ai/api/v1/models").mock(return_value=httpx.Response(200, json={"models": []}))
+    respx.get("https://openrouter.ai/api/v1/models").mock(
+        return_value=httpx.Response(200, json={"models": []})
+    )
 
     adapter = OpenRouterCatalogAdapter(cache_dir=tmp_path)
     with pytest.raises(CatalogParseError):
@@ -103,7 +109,9 @@ async def test_openrouter_skips_one_malformed_model_entry(tmp_path: Path) -> Non
 @pytest.mark.asyncio
 @respx.mock
 async def test_openrouter_authorization_header_optional(tmp_path: Path) -> None:
-    route = respx.get("https://openrouter.ai/api/v1/models").mock(return_value=httpx.Response(200, json={"data": []}))
+    route = respx.get("https://openrouter.ai/api/v1/models").mock(
+        return_value=httpx.Response(200, json={"data": []})
+    )
 
     adapter_without_key = OpenRouterCatalogAdapter(cache_dir=tmp_path)
     await adapter_without_key.refresh(force=True)
@@ -118,7 +126,9 @@ async def test_openrouter_authorization_header_optional(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 @respx.mock
 async def test_openrouter_errors_do_not_leak_api_key(tmp_path: Path) -> None:
-    respx.get("https://openrouter.ai/api/v1/models").mock(side_effect=httpx.ConnectError("network down"))
+    respx.get("https://openrouter.ai/api/v1/models").mock(
+        side_effect=httpx.ConnectError("network down")
+    )
 
     adapter = OpenRouterCatalogAdapter(cache_dir=tmp_path, api_key="very-secret")
     with pytest.raises(CatalogFetchError) as exc_info:

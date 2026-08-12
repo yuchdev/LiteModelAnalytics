@@ -76,19 +76,24 @@ class OpenRouterCatalogAdapter:
                 raise CatalogCacheError("offline mode enabled but no cache snapshot is available")
             return _mark_stale_if_needed(cache, now=clock, ttl=self._ttl)
 
-        if not force and cache is not None and not _is_expired(cache.retrieved_at, now=clock, ttl=self._ttl):
+        if (
+            not force
+            and cache is not None
+            and not _is_expired(cache.retrieved_at, now=clock, ttl=self._ttl)
+        ):
             return cache
 
         try:
             raw_payload = await self._fetch_models()
             snapshot = self._parse_payload(raw_payload, clock=clock)
             self._write_cache(snapshot=snapshot, raw_payload=raw_payload)
-            return snapshot
         except (CatalogFetchError, CatalogParseError):
             if cache is None:
                 raise
             stale_cache = cache.model_copy(update={"stale": True})
             return stale_cache
+        else:
+            return snapshot
 
     async def _fetch_models(self) -> dict[str, Any]:
         url = f"{self._base_url}/api/v1/models"
@@ -114,16 +119,22 @@ class OpenRouterCatalogAdapter:
                 if attempt < attempts - 1:
                     await asyncio.sleep(self._retry_backoff_seconds * (attempt + 1))
                     continue
-                raise CatalogFetchError(f"failed to fetch OpenRouter catalog from {url}") from exc
+                break
 
             if response.status_code in {401, 403}:
-                raise CatalogFetchError(f"OpenRouter returned HTTP {response.status_code} for catalog request")
+                raise CatalogFetchError(
+                    f"OpenRouter returned HTTP {response.status_code} for catalog request"
+                )
             if response.status_code == 429:
                 raise CatalogFetchError("OpenRouter rate limited catalog request (HTTP 429)")
             if response.status_code >= 500:
-                raise CatalogFetchError(f"OpenRouter server error during catalog request: HTTP {response.status_code}")
+                raise CatalogFetchError(
+                    f"OpenRouter server error during catalog request: HTTP {response.status_code}"
+                )
             if response.status_code >= 400:
-                raise CatalogFetchError(f"OpenRouter catalog request failed: HTTP {response.status_code}")
+                raise CatalogFetchError(
+                    f"OpenRouter catalog request failed: HTTP {response.status_code}"
+                )
 
             try:
                 payload = response.json()
@@ -135,7 +146,7 @@ class OpenRouterCatalogAdapter:
             return payload
 
         if last_exc is not None:
-            raise CatalogFetchError("failed to fetch OpenRouter catalog") from last_exc
+            raise CatalogFetchError(f"failed to fetch OpenRouter catalog from {url}") from last_exc
         raise CatalogFetchError("failed to fetch OpenRouter catalog")
 
     def _parse_payload(self, payload: dict[str, Any], *, clock: datetime) -> CatalogSnapshot:
@@ -228,14 +239,17 @@ class OpenRouterCatalogAdapter:
         try:
             payload = json.loads(cache_path.read_text(encoding="utf-8"))
             if not isinstance(payload, dict):
-                raise ValueError("cache must be a JSON object")
+                raise TypeError("cache must be a JSON object")
             snapshot_data = payload["snapshot"]
             snapshot = CatalogSnapshot.model_validate(snapshot_data)
-            return snapshot
         except Exception as exc:
             if offline:
-                raise CatalogCacheError("catalog cache is corrupt and offline mode forbids refresh") from exc
+                raise CatalogCacheError(
+                    "catalog cache is corrupt and offline mode forbids refresh"
+                ) from exc
             return None
+        else:
+            return snapshot
 
     def _write_cache(self, *, snapshot: CatalogSnapshot, raw_payload: dict[str, Any]) -> None:
         self._cache_dir.mkdir(parents=True, exist_ok=True)
@@ -264,7 +278,8 @@ class OpenRouterCatalogAdapter:
 
 
 def _build_capabilities(entry: dict[str, Any]) -> ModelCapabilities:
-    architecture = entry.get("architecture") if isinstance(entry.get("architecture"), dict) else {}
+    raw_architecture = entry.get("architecture")
+    architecture: dict[str, Any] = raw_architecture if isinstance(raw_architecture, dict) else {}
 
     input_modalities = tuple(_as_str_list(architecture.get("input_modalities")))
     output_modalities = tuple(_as_str_list(architecture.get("output_modalities")))
@@ -350,7 +365,14 @@ def _build_pricing(pricing_payload: object, overrides_payload: object) -> Pricin
                     metadata={
                         key: value
                         for key, value in raw_override.items()
-                        if key not in {"name", "prompt_tokens_gte", "utc_window_start", "utc_window_end", "prices"}
+                        if key
+                        not in {
+                            "name",
+                            "prompt_tokens_gte",
+                            "utc_window_start",
+                            "utc_window_end",
+                            "prices",
+                        }
                     },
                 )
             )
@@ -363,7 +385,9 @@ def _build_pricing(pricing_payload: object, overrides_payload: object) -> Pricin
     )
 
 
-def _mark_stale_if_needed(snapshot: CatalogSnapshot, *, now: datetime, ttl: timedelta) -> CatalogSnapshot:
+def _mark_stale_if_needed(
+    snapshot: CatalogSnapshot, *, now: datetime, ttl: timedelta
+) -> CatalogSnapshot:
     stale = _is_expired(snapshot.retrieved_at, now=now, ttl=ttl)
     if not stale:
         return snapshot

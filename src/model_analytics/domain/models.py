@@ -164,8 +164,7 @@ class Pricing(BaseModel):
 
         for override in self.overrides:
             if override.applies(prompt_tokens=prompt_tokens, now_utc=now):
-                for key, value in override.prices.items():
-                    resolved[key] = value
+                resolved.update(override.prices)
 
         return resolved
 

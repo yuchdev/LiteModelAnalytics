@@ -128,10 +128,10 @@ def test_doctor_json_no_secrets() -> None:
 def test_import_does_not_create_dirs(tmp_path: Path) -> None:
     """Importing model_analytics does not create user config/data/cache directories."""
     env = dict(os.environ)
-    env["HOME"] = str(tmp_path)
     env["XDG_CONFIG_HOME"] = str(tmp_path / "config")
     env["XDG_DATA_HOME"] = str(tmp_path / "data")
     env["XDG_CACHE_HOME"] = str(tmp_path / "cache")
+    env["PYTHONPATH"] = str(Path(__file__).resolve().parents[2] / "src")
 
     code = "import model_analytics, model_analytics.config as c; c.default_paths()"
     completed = subprocess.run(

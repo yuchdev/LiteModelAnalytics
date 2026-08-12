@@ -37,12 +37,12 @@ def test_support_status_unknown_by_default() -> None:
 @pytest.mark.unit
 def test_pricing_override_threshold_boundary() -> None:
     pricing = Pricing(
-        components={"prompt": PriceComponent(key="prompt", amount="2")},
+        components={"prompt": PriceComponent(key="prompt", amount=Decimal("2"))},
         overrides=(
             PricingOverride(
                 name="tier",
                 prompt_tokens_gte=100,
-                prices={"prompt": PriceComponent(key="prompt", amount="1")},
+                prices={"prompt": PriceComponent(key="prompt", amount=Decimal("1"))},
             ),
         ),
     )
@@ -57,7 +57,7 @@ def test_utc_window_crossing_midnight() -> None:
         name="night",
         utc_window_start=time(22, 0),
         utc_window_end=time(2, 0),
-        prices={"completion": PriceComponent(key="completion", amount="1")},
+        prices={"completion": PriceComponent(key="completion", amount=Decimal("1"))},
     )
 
     assert override.applies(prompt_tokens=0, now_utc=datetime(2026, 1, 1, 23, 0, tzinfo=UTC))
@@ -68,15 +68,15 @@ def test_utc_window_crossing_midnight() -> None:
 @pytest.mark.unit
 def test_later_overrides_win_per_key() -> None:
     pricing = Pricing(
-        components={"prompt": PriceComponent(key="prompt", amount="5")},
+        components={"prompt": PriceComponent(key="prompt", amount=Decimal("5"))},
         overrides=(
             PricingOverride(
                 name="one",
-                prices={"prompt": PriceComponent(key="prompt", amount="4")},
+                prices={"prompt": PriceComponent(key="prompt", amount=Decimal("4"))},
             ),
             PricingOverride(
                 name="two",
-                prices={"prompt": PriceComponent(key="prompt", amount="3")},
+                prices={"prompt": PriceComponent(key="prompt", amount=Decimal("3"))},
             ),
         ),
     )
@@ -87,7 +87,7 @@ def test_later_overrides_win_per_key() -> None:
 @given(st.decimals(min_value=0, max_value=1000, allow_nan=False, allow_infinity=False, places=6))
 @pytest.mark.unit
 def test_decimal_round_trip_hypothesis(value: Decimal) -> None:
-    component = PriceComponent(key="prompt", amount=str(value))
+    component = PriceComponent(key="prompt", amount=value)
     dumped = component.model_dump(mode="json")
     reloaded = PriceComponent.model_validate(dumped)
     assert reloaded.amount == component.amount

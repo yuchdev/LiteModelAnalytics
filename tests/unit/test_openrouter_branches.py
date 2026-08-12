@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from pathlib import Path
+
+import httpx
+import pytest
+import respx
+
+from model_analytics.catalogs.exceptions import (
+    CatalogCacheError,
+    CatalogFetchError,
+    CatalogParseError,
+)
+from model_analytics.catalogs.openrouter import (
+    OpenRouterCatalogAdapter,
+    _as_int,
+    _as_time,
+    _bool_to_support,
+    _flag_from_modalities,
+)
+from model_analytics.domain import SupportStatus
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_openrouter_offline_without_cache_raises(tmp_path: Path) -> None:
+    adapter = OpenRouterCatalogAdapter(cache_dir=tmp_path)
+    with pytest.raises(CatalogCacheError):
+        await adapter.refresh(offline=True)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@respx.mock
+async def test_openrouter_fetch_error_uses_stale_cache(tmp_path: Path) -> None:
+    respx.get("https://openrouter.ai/api/v1/models").mock(
+        return_value=httpx.Response(200, json={"data": [{"id": "openai/gpt-4o-mini"}]})
+    )
+    adapter = OpenRouterCatalogAdapter(cache_dir=tmp_path)
+    await adapter.refresh(force=True, now_utc=datetime(2026, 1, 1, tzinfo=UTC))
+
+    respx.get("https://openrouter.ai/api/v1/models").mock(side_effect=httpx.ConnectError("boom"))
+    stale = await adapter.refresh(force=True, now_utc=datetime(2026, 1, 2, tzinfo=UTC))
+
+    assert stale.stale is True
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@respx.mock
+async def test_openrouter_retries_transient_errors(tmp_path: Path) -> None:
+    calls = {"count": 0}
+
+    def _response(_: httpx.Request) -> httpx.Response:
+        calls["count"] += 1
+        if calls["count"] < 2:
+            raise httpx.ConnectError("temporary")
+        return httpx.Response(200, json={"data": []})
+
+    respx.get("https://openrouter.ai/api/v1/models").mock(side_effect=_response)
+
+    adapter = OpenRouterCatalogAdapter(cache_dir=tmp_path, retries=1, retry_backoff_seconds=0)
+    snapshot = await adapter.refresh(force=True)
+
+    assert snapshot.models == {}
+    assert calls["count"] == 2
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@respx.mock
+async def test_openrouter_retries_exhausted(tmp_path: Path) -> None:
+    respx.get("https://openrouter.ai/api/v1/models").mock(
+        side_effect=httpx.ConnectError("temporary")
+    )
+    adapter = OpenRouterCatalogAdapter(cache_dir=tmp_path, retries=1, retry_backoff_seconds=0)
+    with pytest.raises(CatalogFetchError):
+        await adapter.refresh(force=True)
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@respx.mock
+async def test_openrouter_uses_fresh_cache_without_network(tmp_path: Path) -> None:
+    route = respx.get("https://openrouter.ai/api/v1/models").mock(
+        return_value=httpx.Response(200, json={"data": [{"id": "openai/gpt-4o-mini"}]})
+    )
+    adapter = OpenRouterCatalogAdapter(cache_dir=tmp_path)
+    first = await adapter.refresh(force=True, now_utc=datetime(2026, 1, 1, tzinfo=UTC))
+    assert route.called
+
+    route.calls.reset()
+    second = await adapter.refresh(force=False, now_utc=datetime(2026, 1, 1, tzinfo=UTC))
+    assert second.models == first.models
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@respx.mock
+async def test_openrouter_response_json_not_object(tmp_path: Path) -> None:
+    respx.get("https://openrouter.ai/api/v1/models").mock(return_value=httpx.Response(200, json=[]))
+    adapter = OpenRouterCatalogAdapter(cache_dir=tmp_path)
+    with pytest.raises(CatalogParseError):
+        await adapter.refresh(force=True)
+
+
+@pytest.mark.unit
+def test_openrouter_helper_parsers() -> None:
+    assert _as_int("10") == 10
+    assert _as_int("x") is None
+    assert _as_time("22:30:00") is not None
+    assert _as_time("bad-time") is None
+    assert _bool_to_support(False) == SupportStatus.UNSUPPORTED
+    assert _flag_from_modalities("video", ("text",), ("text",)) == SupportStatus.UNKNOWN

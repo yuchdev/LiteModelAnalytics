@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -11,9 +12,9 @@ from model_analytics.catalogs.openrouter import OpenRouterCatalogAdapter
 from model_analytics.domain import canonical_model_id
 
 
-def _fixture(name: str) -> dict[str, object]:
+def _fixture(name: str) -> dict[str, Any]:
     root = Path(__file__).resolve().parents[1] / "fixtures" / "catalogs"
-    return json.loads((root / name).read_text(encoding="utf-8"))
+    return cast(dict[str, Any], json.loads((root / name).read_text(encoding="utf-8")))
 
 
 @pytest.mark.unit

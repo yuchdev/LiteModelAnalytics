@@ -35,8 +35,8 @@ class LiteLLMCatalogAdapter:
         clock = now_utc or datetime.now(UTC)
 
         try:
-            import litellm  # type: ignore[import-not-found]
-        except Exception as exc:  # pragma: no cover - env-dependent
+            import litellm
+        except ImportError as exc:
             raise DependencyError("LiteLLM is required for LiteLLM catalog adapter") from exc
 
         models: dict[str, ModelProfile] = {}
@@ -74,7 +74,15 @@ class LiteLLMCatalogAdapter:
                 extra_metadata={
                     key: value
                     for key, value in payload.items()
-                    if key not in {"input_cost_per_token", "prompt_cost_per_token", "output_cost_per_token", "completion_cost_per_token", "max_input_tokens", "max_output_tokens"}
+                    if key
+                    not in {
+                        "input_cost_per_token",
+                        "prompt_cost_per_token",
+                        "output_cost_per_token",
+                        "completion_cost_per_token",
+                        "max_input_tokens",
+                        "max_output_tokens",
+                    }
                 },
             )
 
@@ -91,7 +99,9 @@ class LiteLLMCatalogAdapter:
                     provider=provider,
                     model_id=normalized_model_id,
                     canonical_id=canonical_id,
-                    display_name=payload.get("display_name") if isinstance(payload.get("display_name"), str) else None,
+                    display_name=payload.get("display_name")
+                    if isinstance(payload.get("display_name"), str)
+                    else None,
                 ),
                 endpoints=(
                     ModelEndpoint(
