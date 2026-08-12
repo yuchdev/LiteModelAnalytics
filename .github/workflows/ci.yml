@@ -6,10 +6,16 @@ on:
   pull_request:
     branches: [main]
 
+# Minimal default permissions; jobs that need more override explicitly.
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint and Format
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -25,6 +31,8 @@ jobs:
   mypy:
     name: MyPy
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -38,6 +46,8 @@ jobs:
   tests:
     name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
@@ -60,6 +70,8 @@ jobs:
   docs:
     name: Docs Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -73,6 +85,8 @@ jobs:
   build:
     name: Package Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6

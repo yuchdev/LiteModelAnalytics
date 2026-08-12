@@ -72,7 +72,8 @@ def doctor(
     }
 
     if output_format == OutputFormat.json:
-        console.print(json.dumps(data, indent=2))
+        # Use print() to avoid Rich markup processing corrupting JSON output.
+        print(json.dumps(data, indent=2))
     else:
         table = Table(title="model-analytics doctor", show_header=True)
         table.add_column("Check", style="bold")
