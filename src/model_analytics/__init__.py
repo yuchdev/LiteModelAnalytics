@@ -13,9 +13,12 @@ try:
 except PackageNotFoundError:  # pragma: no cover
     __version__ = "0.0.0.dev0"
 
+from model_analytics.application import analytics
+
 __all__ = [
     "ConfigurationError",
     "DependencyError",
     "ModelAnalyticsError",
     "__version__",
+    "analytics",
 ]

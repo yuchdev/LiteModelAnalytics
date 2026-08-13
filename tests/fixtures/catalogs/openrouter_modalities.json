@@ -1,0 +1,19 @@
+{
+  "data": [
+    {
+      "id": "openai/gpt-4.1",
+      "name": "GPT-4.1",
+      "architecture": {
+        "input_modalities": ["text", "image"],
+        "output_modalities": ["text", "audio"]
+      },
+      "supports_tools": true,
+      "supports_json_mode": true,
+      "pricing": {
+        "prompt": "0.000002",
+        "completion": "0.000008",
+        "audio": "0.000001"
+      }
+    }
+  ]
+}

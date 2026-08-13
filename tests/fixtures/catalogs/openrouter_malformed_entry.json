@@ -1,0 +1,13 @@
+{
+  "data": [
+    {
+      "id": "openai/gpt-4o-mini",
+      "pricing": {
+        "prompt": "0.00000015"
+      }
+    },
+    {
+      "name": "Missing id"
+    }
+  ]
+}
